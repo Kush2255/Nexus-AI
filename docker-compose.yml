@@ -1,0 +1,65 @@
+version: '3.9'
+
+services:
+  # ─── Backend API ──────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - VECTOR_DB=chroma
+      - CHROMA_PERSIST_DIR=/app/data/chroma
+      - DATABASE_URL=sqlite+aiosqlite:///./data/research_assistant.db
+      - USE_REDIS=${USE_REDIS:-false}
+      - REDIS_URL=redis://redis:6379/0
+      - API_CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+      - MAX_REFLECTION_LOOPS=${MAX_REFLECTION_LOOPS:-3}
+      - CHUNK_SIZE=${CHUNK_SIZE:-1000}
+    volumes:
+      - backend_data:/app/data
+    depends_on:
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ─── Frontend ─────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ─── Redis (optional memory) ──────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  backend_data:
+  redis_data:
