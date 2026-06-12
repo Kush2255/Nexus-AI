@@ -35,24 +35,9 @@ async def lifespan(app: FastAPI):
         os.makedirs(d, exist_ok=True)
     await init_db()
     logger.info("Database initialized")
-    try:
-        from app.rag.pipeline import get_rag_pipeline
-        get_rag_pipeline()
-        logger.info("RAG pipeline ready")
-    except Exception as e:
-        logger.warning(f"RAG pipeline warning: {e}")
-    try:
-        from app.services.llm_service import LLMService
-        LLMService.get_instance()
-        logger.info("LLM service ready")
-    except Exception as e:
-        logger.warning(f"LLM service warning: {e}")
-    try:
-        from app.memory.manager import get_memory_manager
-        get_memory_manager()
-        logger.info("Memory manager ready")
-    except Exception as e:
-        logger.warning(f"Memory manager warning: {e}")
+    logger.info("Skipping RAG initialization during startup")
+    logger.info("Skipping LLM service initialization during startup")
+    logger.info("Skipping memory manager initialization during startup")
     logger.info(f"Ready at http://localhost:{os.getenv('API_PORT', 8000)}")
     logger.info(f"API Docs: http://localhost:{os.getenv('API_PORT', 8000)}/docs")
     yield
